@@ -3,6 +3,7 @@ layout: post
 title: SQL self joins, like ARIMA in my mind
 categories: [programming]
 tags: [sql, self-join]
+published: true
 ---
 
 I have a problem, where I was handed an analytical table and I have to display, in a data viz tool, several different periods of the same data in the same table. Something like this:
