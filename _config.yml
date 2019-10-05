@@ -84,3 +84,6 @@ exclude:
   - LICENSE
   - README.md
   - CNAME
+
+# Other configuration options
+excerpt_separator: <!--more-->  # you can specify your own separator, of course.

@@ -5,7 +5,8 @@ tags: [jekyll, english]
 ---
 
 Yeah, my blog is on Jekyll. And I know I should change the first post, but for anyone who finds out, I'm going to leave it here so you will remember how easy is to set up a Jekyll blog on GitHub.
-
+<!--more-->
+### Original post
 Next you can update your site name, avatar and other options using the _config.yml file in the root of your repository (shown below).
 
 ![_config.yml]({{ site.baseurl }}/images/config.png)
