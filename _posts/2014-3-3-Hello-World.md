@@ -1,7 +1,10 @@
 ---
 layout: post
-title: You're up and running!
+title: You're up and running! The first Jekyll post
+tags: [jekyll, english]
 ---
+
+Yeah, my blog is on Jekyll. And I know I should change the first post, but for anyone who finds out, I'm going to leave it here so you will remember how easy is to set up a Jekyll blog on GitHub.
 
 Next you can update your site name, avatar and other options using the _config.yml file in the root of your repository (shown below).
 
