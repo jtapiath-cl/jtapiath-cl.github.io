@@ -8,7 +8,7 @@ excerpt-separator: <!--more-->
 ---
 
 I have a problem, where I was handed an analytical table and I have to display, in a data viz tool, several different periods of the same data in the same table. Something like this:
-{% highlight R %}
+{% highlight shell %}
 | row_label   | count_now   | count_last_month | count_last_quarter | ... |
 |-------------|-------------|------------------|--------------------|-----|
 | Value row 1 | 2576821     | 2576521          | 33348930           | ... | 
@@ -17,7 +17,7 @@ I have a problem, where I was handed an analytical table and I have to display, 
 {% endhighlight %}
 
 But my table layout is as follows:
-{% highlight R %}
+{% highlight shell %}
 root
   |-- row_label
   |-- count
@@ -26,7 +26,7 @@ root
 {% endhighlight %}
 
 So, my frustation began to build up when I could not do that in Tableau. And I needed to vent.
-<!--more-->
+
 # Problem Statement and first approach
 My first approach was to brute-force the entire thing when creating the Tableau Sheets. And I pretty soon discovered that creating a lagged new calculated value is a dealbreaker. I mean, I got to some resources [such as this one](https://community.tableau.com/thread/242741), or [this blog post](http://onenumber.biz/blog-1/2017/10/9/comparing-year-over-year-in-tableau) or [this website](https://blog.zuar.com/tableau-trick-quarter-to-date-over-prior-quarter-to-date-hierarchy/). **BUT**, all these resources point to table calculations and looking at the data from today. I need to be able to choose any period and get updated values for the month previous to the selection, 3 months back and last year. So these resources, while cool and helpful, were not on point with my needs.
 
