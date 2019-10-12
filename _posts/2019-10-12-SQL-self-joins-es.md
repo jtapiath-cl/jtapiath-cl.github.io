@@ -31,7 +31,7 @@ root
 Mi frustración comenzó a crecer cuando la situación se volvió completa, y necesitaba hacer algo al respecto.
 <!--more-->
 # El problema
-Definamos primero el requerimiento. Debo crear una visualización (una tabla pivote, en este caso) que muestre un valor, un conteo, una frecuencia absoluta, a través de varios periodos de tiempo en diferentes columnas. El periodo base debe ser un parámetro; es decir, no es necesariamente el mes en curso (como obtenerlo de la fecha del sistema). La tabla final esperada se debiera ver así:
+Definamos primero el requerimiento. Debo crear una visualización (una tabla pivote, en este caso) que muestre un valor, un conteo, una frecuencia absoluta, para varios periodos de tiempo en diferentes columnas. El periodo base debe ser un parámetro; es decir, no es necesariamente el mes en curso (como obtenerlo de la fecha del sistema). La tabla final esperada se debiera ver así:
 {% highlight shell %}
 +----------------+---------------------+-------------------+-----------------+---------------+-------------------+
 | etiqueta       | Periodo base        | Mes anterior      | 3 meses atrás   | 1 año atrás   | Otros períodos    |
@@ -59,10 +59,10 @@ Como entiendo que este blog no sólo es para contar cómo hice algo, sino tambi�
 ## Instalando WSL en Windows 10
 Tengo en mi máquina Windows 10 con el **Subsistema de Linux para Windows (WSL)** activado. Así, puedo usar Bash dentro de windows. Qué tan cool es eso?
 
-Por supuesto, si eres un desarrollador, esto no es ninguna noticia ni novedad. Pero, si por alguna razón vives bajo una roca en Fondo de Bikiin, y no sabes que se puede tener una distribución casi completa de Linux en Windows 10, puedes mirar [este artículo](https://cepa.io/2018/02/10/linuxizing-your-windows-pc-part1/) para comenzar con WSL, mientras que [este artículo muestra cómo instalar MySQL y otras herramientas en WSL](https://medium.com/@fiqriismail/how-to-setup-apache-mysql-and-php-in-linux-subsystem-for-windows-10-e03e67afe6ee). Para fines de la solución vista en este post, asumo que ya sabes instalar WSL, que lo activaste, y que lo estás usando, así que todos los ejemplos serán ejecutados en dicho ambiente.
+Por supuesto, si eres un desarrollador, esto no es ninguna noticia ni novedad. Pero, si por alguna razón vives bajo una roca en Fondo de Bikini, y no sabes que se puede tener una distribución casi completa de Linux en Windows 10, puedes mirar [este artículo](https://cepa.io/2018/02/10/linuxizing-your-windows-pc-part1/) para comenzar con WSL, mientras que [este artículo te mostrará cómo instalar MySQL y otras herramientas en WSL](https://medium.com/@fiqriismail/how-to-setup-apache-mysql-and-php-in-linux-subsystem-for-windows-10-e03e67afe6ee). Para fines de la solución vista en este post, asumo que ya sabes instalar WSL, que lo activaste, y que lo estás usando, así que todos los ejemplos serán ejecutados en dicho ambiente.
 
 ## Ambientes de Anaconda
-También instalé y estoy usando Anaconda en WSL. La guía de instalación la tomé de [ete sitio](https://gist.github.com/kauffmanes/5e74916617f9993bc3479f401dfec7da), incluyendo la sección sobre los symlinks, y la guía de uso (que muestra cómo crear ambientes nuevos y aislar el desarrollo en términos de paquetes y dependencias) la tomé directo de [la documentación de `conda`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). Finalmente, la creación de un ambiente de Conda con R viene [de esta página de `conda`](https://docs.anaconda.com/anaconda/user-guide/tasks/using-r-language/).
+También instalé y estoy usando Anaconda en WSL. La guía de instalación la tomé de [este sitio](https://gist.github.com/kauffmanes/5e74916617f9993bc3479f401dfec7da), incluyendo la sección sobre los symlinks, y la guía de uso (que muestra cómo crear ambientes nuevos y aislar el desarrollo en términos de paquetes y dependencias) la tomé directo de [la documentación de `conda`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). Finalmente, la creación de un ambiente de Conda con R viene [de esta página de `conda`](https://docs.anaconda.com/anaconda/user-guide/tasks/using-r-language/).
 
 ## Creando archivos de datos
 Para poder testear las soluciones aquí propuestas, necesitamos tener archivos con datos que cumplan las especificaciones del problema. El siguiente script de R generará un archivo CSV con datos de prueba:
@@ -168,28 +168,27 @@ mysql> SELECT COUNT(*) FROM self_join_20191005;
 # Primeros pasos hacia la resolución del problema
 Mi primer intento de solución fue fuerza bruta pura: intentar crear la tabla pivote requerida en una hoja de Tableau, sin estructurar previamente los datos. Muy luego descubrí que crear un campo calculado con lag en tiempo era imposible en esa herramienta. O sea, encontré recursos muy buenos, [como éste](https://community.tableau.com/thread/242741), o [este artículo](http://onenumber.biz/blog-1/2017/10/9/comparing-year-over-year-in-tableau) o [este sitio](https://blog.zuar.com/tableau-trick-quarter-to-date-over-prior-quarter-to-date-hierarchy/). **PERO**, estos tres sitios de ayuda apuntan a cálculos de tabla, y a mirar la data desde la fecha de sistema. Yo necesito poder elegir cualquier periodo de datos, y tener valores actualizados para los meses previos a la selección (1 mes, 3 meses y 12 meses/un año). Entonces, lo que encontré navegando por internet, aún cuando es cool y permite mucha ayuda, no resolvió mis necesidades.
 
-
-After a while staring at the screen and thinking about my problem, I noticed this looks very similar, in my mind, to an ARIMA calculation. If you're not familiar with the concept, ARIMA stands for AutoRegressive Integrated Moving Average (and you can gloss over the [Wikipedia page on ARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average)) and its an econometric and statistics modelling technique. A generalization of the Autoregressive Moving Average, or ARMA, model, what it essentially does is to auto regress the time series. In plain english, I am joining the current data with the same dataset but lagged a few periods. Which, in turn, looks something like this:
+Pasé mucho rato mirando la pantalla, al infinito, y a ambas juntas, antes de notar que este problema es sumamente similar (o al menos así lo veo) a la aplicación de un modelo econométrico llamado ARIMA. Si no te suena el concepto, ARIMA es el acrónimo para un modelo AutoRegresivo Integrado y de Medias Móviles (en inglés, por supuesto; puedes encontrar más información en la [página de Wikipedia de ARIMA](https://es.wikipedia.org/wiki/Modelo_autorregresivo_integrado_de_media_m%C3%B3vil), aunque creo que es mejor fuente [Wikipedia en inglés](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average)). ARIMA es una generalización del modelo ARMA (autoregresivo no integrado de medias móviles), pero lo importante de esto no es el modelo exacto sino el mecanismo de la autoregresión: voy a hacer, en esencia, un JOIN de una tabla consigo misma, sólo que en periodos anteriores. Finalmente, la tabla debiera verse más menos así:
 {% highlight shell %}
-+--------+---------+-----------+-----+-----------+
-| period | value_n | value_n-1 | ... | value_n-m |
-+--------+---------+-----------+-----+-----------+
-| n      | 200     | 199       | ... | 45        |
-| n-1    | 199     | 180       | ... | NULL      |
-| n-2    | 180     | ...       | ... | NULL      |
-| ...    | ...     | ...       | ... | NULL      | 
-| n-m    | 45      | NULL      | ... | NULL      |
-+--------+---------+-----------+-----+-----------+
++---------+---------+-----------+-----+-----------+
+| periodo | valor_n | valor_n-1 | ... | valor_n-m |
++---------+---------+-----------+-----+-----------+
+| n       | 200     | 199       | ... | 45        |
+| n-1     | 199     | 180       | ... | NULL      |
+| n-2     | 180     | ...       | ... | NULL      |
+| ...     | ...     | ...       | ... | NULL      | 
+| n-m     | 45      | NULL      | ... | NULL      |
++---------+---------+-----------+-----+-----------+
 {% endhighlight %}
 
-Why NULLs? Because in the current time series those values do not exists. So, at some point in the series, I won't be able to get said values for periods previous to the selected one (`n`).
+"¿Por qué nulos?" veo que preguntan, y la explicación para esos valores es que no existen en la data original. En algún punto de la serie autoregresiva no voy a poder obtener los valores previos al mes seleccionado (`n`). Y claro, antes del primer mes calculado no existen valores previos. Ergo, `NULL`.
 
-In all honesty, my thought can be translated to an auto regressive model; the integrated moving average part is not necessary here. All we need is to self join the data with itself but lagged a few periods. 
+En toda honestidad, mi proceso de solución es sólo la autoregresión; la parte de las medias móviles integradas no es necesaria aquí. Todo lo que necesitamos es el `SELF JOIN` con un retraso en los periodos de la serie de tiempo.
 
-Once the possible solution was on my mind, I had a new problem at hand: *how to implement this over my current environment?*
+Una vez que la solución posible estaba en mi cabeza, me enfrenté a una nueva complicación: *¿cómo implementar esto en el ambiente actual en el que me encuentro?*
 
-# How to code an answer in a SQL dialect
-I had to take my data to an appropriate format. And, currently, this is what I had:
+# Cómo escribir una respuesta en MySQL
+Primero tuve que poner la data en un formato apropiado. Actualmente, esto es lo que tengo:
 {% highlight sql %}
 SELECT
   row_label,
@@ -198,7 +197,7 @@ SELECT
 FROM self_join_20191005
 {% endhighlight %}
 
-I first create a new table definition, with a twist:
+Creo una nueva definición de mis datos originales:
 {% highlight sql %}
 SELECT
   row_label,
@@ -215,9 +214,11 @@ SELECT
 FROM self_join_20191005
 {% endhighlight %}
 
-Please notice I created the `date_join_dt` field since I'm working with end of month dates. Thus, I need to control for the possibility of some dates being different than the target dates when subtracting months. This is done creating a string variable with the `CONCAT` function, fetching the `YEAR` and `MONTH` of the base date, and finishing the date string with the integer 1. This yields a string in the form of YYYY-MM-1, which, converted to date with `STR_TO_DATE(date, format)`, will deliver the first day of the month always.
+Fíjense que creé el campo `date_join_df`, dado que en mis datos originales trabajo con fechas diferentes, hacia fin de mes. Entonces, necesito controlar la posibilidad de que algunas fechas sean diferentes al agregar o quitar meses. Esto lo hago creando una variable de texto (con la función `CONCAT`) que junte el año (usando `YEAR`) y el mes (usando `MONTH`) de la fecha base, y terminando con un valor literal '1'. Esto entrega un valor de YYYY-MM-1, que, convertido a fecha con `STR_TO_DATE(fecha, formato)`, entregará siempre el primer día del mes.
 
-This new table looks like this:
+Por otro lado, las definiciones de tabla, a partir de este punto, serán con nombres de columna en inglés, para permitir la reutilización de los scripts.
+
+La nueva tabla se ve así:
 {% highlight shell %}
 +-------------+------------+------------+--------------+
 | row_label   | count_freq | date_dt    | date_join_dt |
@@ -235,10 +236,10 @@ This new table looks like this:
 +-------------+------------+------------+--------------+
 {% endhighlight %}
 
-And this is helpful because the joining columns will be `date_join_dt` for all tables, since this guarantees we won't run into any issue with month subtractions and controlling days.
+Y esto es de mucha ayuda, y prueba nuestro concepto, porque vamos a usar una columna del tipo `date_join_dt` para todas las tablas. Esto garantiza que no vamos a encontrarnos con periodos que no podamos unir.
 
-# Solving the problem with SQL
-Now that the table can be created with the desired layout, I can perform a self `JOIN` operation, to deliver the expected result. This can be done in pure SQL as follows:
+# Resolviendo el problema con SQL
+Ahora que la tabla puede ser creada con el diseño adecuado, podemos hacer un `JOIN` de la tabla consigo misma, y obtener el resultado esperado. En SQL puro (dialecto de MySQL), esto se hace así:
 {% highlight sql %}
 SELECT
   A.row_label,
@@ -302,7 +303,7 @@ LEFT JOIN self_join_20191005 D
 ;
 {% endhighlight %}
 
-And the output of this query is as follows (I ordered by `date` and `row_label` for the sake of visualization. I'm also displaying the first 15 records of the table, for brevity's sake):
+El resultado de esta query se ve a continuación. Ordené por `date` y `row_label` para ver mejor los resultados. Además, sólo 15 filas se muestran, para no extender tanto el post:
 {% highlight shell %}
 +-------------+------------+-------+--------+--------+--------+
 | row_label   | date_c     | cnt   | cnt_1m | cnt_1q | cnt_1y |
@@ -320,20 +321,20 @@ And the output of this query is as follows (I ordered by `date` and `row_label` 
 +-------------+------------+-------+--------+--------+--------+
 {% endhighlight %}
 
-A fairly inelegant but very effective solution to this issue. Now we have the data as we want it to be!
+La query anterior es una forma efectiva y no muy elegante de resolver este problema. Probamos, con éxito, que la data se puede visualizar de la manera que requerimos.
 
-But there's a catch: we cannot implement something like this in Tableau, since Custom SQL JOIN syntax is strange and I don't want to start to debug a new problem. So, can we design a solution that allows us to use a single table and just `LEFT JOIN` it to death?
+El siguiente quebradero es que implementar esta solución directamente es complejo, dado que la sintaxis de los SQL ad-hoc de Tableau son más extraños de lo normal, y no quiero empezar a hacer debug de una implementación atípica. Así las cosas, podemos diseñar una solución con una tabla física y 3 lógicas, y hacer `LEFT JOIN` hasta la muerte. Es la idea, al menos.
 
-# Multiple table approach
-To deploy our solution to Tableau (or PySpark for that matter), we will have 4 different tables:
-* Current period table: the base table (dubbed `base_table` for this example) {`row_label`, `date`, `count`, `date_join_1m`, `date_join_1q`, `date_join_1y`}
-* Last month table (`prevm_table`): the base table, but only with the modified date {`row_label`, `date`, `count`, `date_join`}
-* Last quarter table (`prevq_table`): {`row_label`, `date`, `count`, `date_join`}
-* Last year table (`prevy_table`): {`row_label`, `date`, `count`, `date_join`}
+# Solución con múltiples tablas
+Para implementar nuestra solución a Tableau (o PySpark, o alguna otra plataforma en verdad), tendremos cuatro tablas diferentes:
+* Tabla de periodo base: tabla original (llamada `base_table` en este ejemplo) {`row_label`, `date`, `count`, `date_join_1m`, `date_join_1q`, `date_join_1y`}
+* Tabla del mes anterior (`prevm_table`): la tabla base, con menos campos, que representa al mes anterior {`row_label`, `date`, `count`, `date_join`}
+* Tabla del trimestre anterior (`prevq_table` por 'quarter'): {`row_label`, `date`, `count`, `date_join`}
+* Tabla del año anterior (`prevy_table`): {`row_label`, `date`, `count`, `date_join`}
 
-I'm keeping the base date on each table for testing purposes. This way, later down the road, I can test if all the JOINs were successful.
+Estoy dejando la fecha original en las tablas para validar luego los resultados. Con esta estructura, luego se puede validar que los JOINs hayan sido exitosos.
 
-The table definitions are as follows:
+Las definiciones de tabla son:
 {% highlight sql %}
 CREATE TABLE base_table AS
 SELECT
@@ -418,9 +419,9 @@ SELECT
 FROM self_join_20191005
 {% endhighlight %}
 
-All the extra tables are the same. Makes sense, since we're doing a `SELF JOIN`, and all the extra structure should be equivalent. Note all source tables are the same `ssibd`.`self_join_20191005` table. This aids later on in the deployment of the solution in a software like Tableau.
+Las 3 tablas lógicas adicionales son iguales. Tiene sentido, dado que el `SELF JOIN` requiere que la tabla se una con ella misma. Por lo mismo, la tabla fuente siempre será `ssibd`.`self_join_20191005`. Esto ayudará a la implementación de la solución en Tableau.
 
-And now, for the fun part, we have to JOIN these tables together. As I mentioned, we'll keep all the dates in place, to check the validity of our query:
+Y ahora, para la parte divertida, haremos el JOIN final. Como mencioné, dejaremos todas las fechas en el resultado, para validar los resultados luego:
 {% highlight sql %}
 CREATE TABLE final_result AS
 SELECT
@@ -448,7 +449,7 @@ LEFT JOIN prevy_table D
   AND A.date_join_1y = D.date_join
 {% endhighlight %}
 
-The final table structure should be as follows:
+La tabla final debiera tener la siguiente estructura:
 {% highlight shell %}
 root: final_result
   |-- row_label
@@ -465,18 +466,17 @@ root: final_result
   |-- cnt_1y
 {% endhighlight %}
 
-## Implementing the solution and testing the results
-Finally we have all the data in place to deploy the newly created scripts we have and see if we get the proper results.
+## Implementando la solución y probando los resultados
+Ya tenemos todos los datos requeridos para implementar nuestros scrips recién creados, y ver si obtenemos los resultados esperados.
 
-I created a new SQL script, `create_tables.sql`, which will have all the table definitions we mentioned earlier in this article. We run said script using the following shell command:
-
+Creé un nuevo script SQL, `create_tables.sql`, en el que se encuentran todas las definiciones de tablas anteriores. Corremos dicho script con el siguiente comando en bash:
 {% highlight shell %}
 mysql --user="<user>" -password="<pass>" --database="ssibd" < /path/to/file/filename.sql
 {% endhighlight %}
 
-> Keep in mind using the `--password` parameter with your password written on the command is being done **only because this is a development environment**. You should never use such practices in a production environment.
+> El uso del parámetro `--password` con tu contraseña escrita en el comando es permisible **sólo porque estamos en un ambiente de desarrollo propio y controlado**. Nunca debieras hacer algo parecido en un ambiente de producción.
 
-Let's check the final output:
+Revisemos los resultados finales:
 {% highlight shell %}
 jtapia@DESKTOP-2019LPH:~$ mysql -u USER -p -e "SELECT * FROM ssibd.final_result ORDER BY date_c ASC, row_label LIMIT 20;"
 Enter password:
@@ -506,11 +506,11 @@ Enter password:
 +-------------+------------+-------+------------+------------+--------+------------+------------+--------+------------+---------+--------+
 {% endhighlight %}
 
-Which is **exactly** what we were after. Congratulations to ourselves on getting the proper data!
+Esto es **exactamente** lo que buscamos. Felicidades a nosotros por obtener los datos de la manera correcta!
 
-# Conclusion
-This problem, deceivingly simple, proved some data engineering challenge. The deployment of the solution in a data visualization platform, such as Tableau or Spotfire, will also come with its challenges. Those are to be discussed in a different post.
+# Conclusión
+Este problema, engañoso en su simpleza, significó un desafío en su resolución. La implementación de la solución en una plataforma de visualización de datos, como Tableau o Spotfire, vendrá con sus propias complicaciones. Ellas serán discutidas en un nuevo artículo.
 
-Also, I'd like to mention that I fully expected Tableau to have lag functions **not based on the table layout but the data layout**, and it was quite a disappointment to be proven wrong. If you happen to know how to produce such a result, you can [email me](mailto:javier@ctjconsult.com) and let me know how it works for you.
+Quería mencionar que esperaba, al iniciar este desarrollo, que Tableau tuviera funciones de lag **basadas en la estructura de la data y no de la tabla usada**, y fue una decepción descubrir que me equivqué. Si conoces de una forma de producir el resultado esperado sólo con Tableau, puedes [escribirme](mailto:javier@ctjconsult.com) y contarme cómo lo resolviste.
 
-You can find the source files in [my GitHub page](https://github.com/jtapiath-cl/ssibd), if you want to give this a spin by yourself.
+Finalmente, todo el código está disponible en [mi perfil de GitHub](https://github.com/jtapiath-cl/ssibd), si prefieres clonar el repo y probar esta solución.

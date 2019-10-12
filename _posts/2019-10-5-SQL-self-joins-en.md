@@ -5,6 +5,7 @@ categories: ["data engineering"]
 tags: [sql, self-join, mysql]
 published: true
 language: en
+comments: true
 ---
 
 I have a problem, where I was handed an analytical table and I have to display, in a data viz tool, several different periods of the same data in the same table. Something like this:
