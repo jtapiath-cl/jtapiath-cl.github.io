@@ -1,10 +1,11 @@
 ---
 layout: post
-title: Self joins en SQL, o cómo hacer ingeniería de datos ingeniosa
+title:  Self joins en SQL, o cómo hacer ingeniería de datos ingeniosa
 categories: ["data engineering"]
 tags: [sql, self-join, mysql]
 published: true
 language: es
+comments: true
 ---
 
 Hace unos días, se me presentó un problema analítico, donde tenía que mostrar, en una herramienta de visualización de datos (digamos Tableau o Qlikview), varios periodos distintos de la misma data, en la misma tabla. Algo parecido a esto:
@@ -30,43 +31,41 @@ root
 Mi frustración comenzó a crecer cuando la situación se volvió completa, y necesitaba hacer algo al respecto.
 <!--more-->
 # El problema
-Definamos primero el requerimiento. Debo crear una visualización (una tabla pivote, en este caso) que muestre un valor, un conteo, una frecuencia absoluta, a través de varios periodos de tiempo en diferentes columnas. El periodo base debe ser un parámetro; es decir, no es necesariamente el mes en curso (como obtenerlo de )
-The requirement at hand is to create a visualization (in this case, a cross table) that displays a value (in this case, a count such as an absolute frequency) over several periods in different columns. The base period must be a parameter; i.e., is not necessarily the current month but something for the user to select. The output table is expected to look like this:
+Definamos primero el requerimiento. Debo crear una visualización (una tabla pivote, en este caso) que muestre un valor, un conteo, una frecuencia absoluta, a través de varios periodos de tiempo en diferentes columnas. El periodo base debe ser un parámetro; es decir, no es necesariamente el mes en curso (como obtenerlo de la fecha del sistema). La tabla final esperada se debiera ver así:
 {% highlight shell %}
-+-------------+---------------------+-------------------+-----------------+---------------+-------------------+
-| label       | Selected period     | Previous month    | 3 months back   | 1 year back   | Any other periods |
-|-------------+---------------------+-------------------+-----------------+---------------+-------------------|
-| Label 1     | 111222333           | 111222111         | 111222000       | 111222999     | ...               |
-| Label 2     | 333444555           | 333222111         | 333222222       | 333444222     | ...               |
-| Label 3     | 11223344            | 11223322          | 11223333        | 11223355      | ...               |
-| ...         | ...                 | ...               | ...             | ...           | ...               |
-| Label n     | 1234567             | 123321            | 123212          | 987654        | ...               |
++----------------+---------------------+-------------------+-----------------+---------------+-------------------+
+| etiqueta       | Periodo base        | Mes anterior      | 3 meses atrás   | 1 año atrás   | Otros períodos    |
+|----------------+---------------------+-------------------+-----------------+---------------+-------------------|
+| Etiqueta 1     | 111222333           | 111222111         | 111222000       | 111222999     | ...               |
+| Etiqueta 2     | 333444555           | 333222111         | 333222222       | 333444222     | ...               |
+| Etiqueta 3     | 11223344            | 11223322          | 11223333        | 11223355      | ...               |
+| ...            | ...                 | ...               | ...             | ...           | ...               |
+| Etiqueta n     | 1234567             | 123321            | 123212          | 987654        | ...               |
 +-------------+---------------------+-------------------+-----------------+---------------+-------------------+
 {% endhighlight %}
 
-The provided data structure is as follows:
+La estructura de datos entregada es la siguiente:
 {% highlight shell %}
 root
-  |-- row_label
-  |-- count
-  |-- date
-  |-- other_unrelated_fields
+  |-- etiqueta_de_fila
+  |-- conteo
+  |-- fecha
+  |-- otros_campos_irrelevantes
 {% endhighlight %}
 
-# Setting up the working environment
-I understand this is also a blog that's supposed to be helpful, so I will provide now some code snippets that create reproducible data, as well as implementing said data to a MySQL installation on WSL.
+# Configurando el entorno de desarrollo
+Como entiendo que este blog no sólo es para contar cómo hice algo, sino también tiene que ser de ayuda para ustedes, voy a entregar *snippets* de código que permitan reproducir el problema y la data, además de poder implementar las soluciones en una instalación de MySQL sobre WSL.
 
-## Installing WSL on Windows 10
-I have Windows 10 with **Windows Subsystem for Linux** activated. This means I can use Bash inside Windows. How cool is that?
+## Instalando WSL en Windows 10
+Tengo en mi máquina Windows 10 con el **Subsistema de Linux para Windows (WSL)** activado. Así, puedo usar Bash dentro de windows. Qué tan cool es eso?
 
-Of course, if you're a dev, this is no news for you. But if, somehow, you live underneath a rock at Bikini's Bottom and you don't know you can run an almost-full Linux distro on Windows 10, please take a look at [this article](https://cepa.io/2018/02/10/linuxizing-your-windows-pc-part1/), and [this one for installing MySQL and others in WSL](https://medium.com/@fiqriismail/how-to-setup-apache-mysql-and-php-in-linux-subsystem-for-windows-10-e03e67afe6ee). I am assuming you already know you can install Linux on Windows, so all examples will be run against said environment.
+Por supuesto, si eres un desarrollador, esto no es ninguna noticia ni novedad. Pero, si por alguna razón vives bajo una roca en Fondo de Bikiin, y no sabes que se puede tener una distribución casi completa de Linux en Windows 10, puedes mirar [este artículo](https://cepa.io/2018/02/10/linuxizing-your-windows-pc-part1/) para comenzar con WSL, mientras que [este artículo muestra cómo instalar MySQL y otras herramientas en WSL](https://medium.com/@fiqriismail/how-to-setup-apache-mysql-and-php-in-linux-subsystem-for-windows-10-e03e67afe6ee). Para fines de la solución vista en este post, asumo que ya sabes instalar WSL, que lo activaste, y que lo estás usando, así que todos los ejemplos serán ejecutados en dicho ambiente.
 
-## Anaconda environments
-I also am running Anaconda on the WSL. The installation guide was taken from [this website](https://gist.github.com/kauffmanes/5e74916617f9993bc3479f401dfec7da), including the symlink part, and the usage guide (and how to create new environments to isolate the packages and development requirements) was taken straight from [the `conda` documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). How to create a Conda R environment comes [from this `conda` page](https://docs.anaconda.com/anaconda/user-guide/tasks/using-r-language/).
+## Ambientes de Anaconda
+También instalé y estoy usando Anaconda en WSL. La guía de instalación la tomé de [ete sitio](https://gist.github.com/kauffmanes/5e74916617f9993bc3479f401dfec7da), incluyendo la sección sobre los symlinks, y la guía de uso (que muestra cómo crear ambientes nuevos y aislar el desarrollo en términos de paquetes y dependencias) la tomé directo de [la documentación de `conda`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). Finalmente, la creación de un ambiente de Conda con R viene [de esta página de `conda`](https://docs.anaconda.com/anaconda/user-guide/tasks/using-r-language/).
 
-## Creating data files
-To be able to test the multiple solutions at hand here, we need to have some data files. The following R script will generate a single CSV file with some test data:
-
+## Creando archivos de datos
+Para poder testear las soluciones aquí propuestas, necesitamos tener archivos con datos que cumplan las especificaciones del problema. El siguiente script de R generará un archivo CSV con datos de prueba:
 {% highlight r %}
 dates <- seq(as.Date("2016/01/01"),
              by = "month",
@@ -92,8 +91,8 @@ write.csv(x = sample_data,
           quote = FALSE)
 {% endhighlight %}
 
-## Importing files to MySQL tables
-The newly created CSV file is stored, in my case, in a local directory in my WSL:
+## Importando los archivos a tablas MySQL
+Este recién creado archivo CSV se guarda, en mi caso, dentro de WSL:
 {% highlight shell %}
 jtapia@DESKTOP-2019LPH:~$ head /path/to/file/sample_data.csv
 date,row_label,count
@@ -108,14 +107,13 @@ date,row_label,count
 2016-03-01,A: format 1,43116
 {% endhighlight %}
 
-(Notice I used `quote = FALSE` on the R `write.csv` call, because I don't like the quoted files when loading data into a table.)
+(Usé `quote = FALSE` en la llamada a `write.csv` de R porque no me gusta que hayan comillas en los archivos CSV, y es más fácil importar data así.)
 
-Now I log in to MySQL and:
-* Create a project database, `ssibd`
-* Create a new table, `self_join_20191005`
-* Load the CSV data into said table
-* Check the contents of the data
-
+Ahora, ingreso a MySQL y:
+* Crearé una base de datos para el proyecto, llamada `ssibd`
+* Crearé una tabla nueva, `self_join_20191005`
+* Cargaré la data en CSV en dicha tabla
+* Revisaré los contenidos de la tabla
 {% highlight shell %}
 mysql> CREATE DATABASE ssibd;
 Query OK, 1 row affected (0.00 sec)
@@ -167,8 +165,9 @@ mysql> SELECT COUNT(*) FROM self_join_20191005;
 1 row in set (0.13 sec)
 {% endhighlight %}
 
-# First approach to solving the problem
-My first approach was to brute-force the entire thing when creating the Tableau sheet. And I pretty soon discovered that creating a lagged new calculated value is a deal breaker. I mean, I got to some resources [such as this one](https://community.tableau.com/thread/242741), or [this blog post](http://onenumber.biz/blog-1/2017/10/9/comparing-year-over-year-in-tableau) or [this website](https://blog.zuar.com/tableau-trick-quarter-to-date-over-prior-quarter-to-date-hierarchy/). **BUT**, all these resources point to table calculations and looking at the data from today. I need to be able to choose any period and get updated values for the month previous to the selection, 3 months back and last year. So these resources, while cool and helpful, were not on point with my needs.
+# Primeros pasos hacia la resolución del problema
+Mi primer intento de solución fue fuerza bruta pura: intentar crear la tabla pivote requerida en una hoja de Tableau, sin estructurar previamente los datos. Muy luego descubrí que crear un campo calculado con lag en tiempo era imposible en esa herramienta. O sea, encontré recursos muy buenos, [como éste](https://community.tableau.com/thread/242741), o [este artículo](http://onenumber.biz/blog-1/2017/10/9/comparing-year-over-year-in-tableau) o [este sitio](https://blog.zuar.com/tableau-trick-quarter-to-date-over-prior-quarter-to-date-hierarchy/). **PERO**, estos tres sitios de ayuda apuntan a cálculos de tabla, y a mirar la data desde la fecha de sistema. Yo necesito poder elegir cualquier periodo de datos, y tener valores actualizados para los meses previos a la selección (1 mes, 3 meses y 12 meses/un año). Entonces, lo que encontré navegando por internet, aún cuando es cool y permite mucha ayuda, no resolvió mis necesidades.
+
 
 After a while staring at the screen and thinking about my problem, I noticed this looks very similar, in my mind, to an ARIMA calculation. If you're not familiar with the concept, ARIMA stands for AutoRegressive Integrated Moving Average (and you can gloss over the [Wikipedia page on ARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average)) and its an econometric and statistics modelling technique. A generalization of the Autoregressive Moving Average, or ARMA, model, what it essentially does is to auto regress the time series. In plain english, I am joining the current data with the same dataset but lagged a few periods. Which, in turn, looks something like this:
 {% highlight shell %}
