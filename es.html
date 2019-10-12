@@ -3,11 +3,12 @@ layout: default
 ---
 
 <div class="posts">
+  <h1>Artículos en español</h1>
   {% for post in site.posts %}
   {% if post.language == "es" %}
     <article class="post">
 
-      <h1><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></h1>
+      <h2></h1><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></h1>
 
       <div class="entry">
         {{ post.excerpt }}
