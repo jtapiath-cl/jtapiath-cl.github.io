@@ -1,35 +1,36 @@
 ---
 layout: post
-title: SQL self joins, like ARIMA in my mind
+title: Self joins en SQL, o cómo hacer ingeniería de datos ingeniosa
 categories: ["data engineering"]
 tags: [sql, self-join, mysql]
 published: true
-language: en
+language: es
 ---
 
-I have a problem, where I was handed an analytical table and I have to display, in a data viz tool, several different periods of the same data in the same table. Something like this:
+Hace unos días, se me presentó un problema analítico, donde tenía que mostrar, en una herramienta de visualización de datos (digamos Tableau o Qlikview), varios periodos distintos de la misma data, en la misma tabla. Algo parecido a esto:
 {% highlight shell %}
-+-------------+-------------+------------------+--------------------+-----+
-| row_label   | count_now   | count_last_month | count_last_quarter | ... |
-|-------------+-------------+------------------+--------------------+-----|
-| Value row 1 | 2576821     | 2576521          | 33348930           | ... | 
-| Value row 2 | 346786      | 256891           | 1654928            | ... | 
-| Value row 3 | 566         | 1000             | 95                 | ... |
-+-------------+-------------+------------------+--------------------+-----+
++--------------+-------------+------------------+----------------------+-----+
+| encabezado   | cnt_actual  | cnt_mes_pasado   | cnt_trimestre_pasado | ... |
+|--------------+-------------+------------------+----------------------+-----|
+| Valor fila 1 | 2576821     | 2576521          | 33348930             | ... | 
+| Valor fila 2 | 346786      | 256891           | 1654928              | ... | 
+| Valor fila 3 | 566         | 1000             | 95                   | ... |
++-------------+-------------+------------------+-----------------------+-----+
 {% endhighlight %}
 
-But my table layout is as follows:
+La estructura de la tabla original es esta:
 {% highlight shell %}
 root
-  |-- row_label
-  |-- count
-  |-- date
-  |-- other_unrelated_fields
+  |-- encabezado
+  |-- conteo
+  |-- fecha
+  |-- otros_campos_no_relevantes
 {% endhighlight %}
 
-So, my frustration began to build up when I could not do that in Tableau. And I needed to vent.
+Mi frustración comenzó a crecer cuando la situación se volvió completa, y necesitaba hacer algo al respecto.
 <!--more-->
-# Problem statement
+# El problema
+Definamos primero el requerimiento. Debo crear una visualización (una tabla pivote, en este caso) que muestre un valor, un conteo, una frecuencia absoluta, a través de varios periodos de tiempo en diferentes columnas. El periodo base debe ser un parámetro; es decir, no es necesariamente el mes en curso (como obtenerlo de )
 The requirement at hand is to create a visualization (in this case, a cross table) that displays a value (in this case, a count such as an absolute frequency) over several periods in different columns. The base period must be a parameter; i.e., is not necessarily the current month but something for the user to select. The output table is expected to look like this:
 {% highlight shell %}
 +-------------+---------------------+-------------------+-----------------+---------------+-------------------+
