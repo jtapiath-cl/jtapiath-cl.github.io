@@ -376,4 +376,4 @@ barplot(height = speech_df[1:10,]$freq,
 # Interpretación de los resultados
 Con un poco de conocimiento de lo que está aconteciendo, me parece extraño que, dadas las reacciones de la clase política, haya en las 10 palabras más comunes sólo menciones a hechos actuales y meta comentarios (*"vamos a impulsar una agenda social"*, *"vamos a crear proyectos"*). Me parece extraño, también, que el décimo término sea la palabra **mil**.
 
-Otros análisis le corresponden a analistas políticos. Por lo pronto, pueden encontrar el script en [el repo de GitHub](https://github.com/jtapiath-cl/ssibd/blob/master/tm_speech_20191023/tm_speech.R).
+Otros análisis le corresponden a analistas políticos. Por lo pronto, pueden encontrar el script en [el repo de GitHub](https://github.com/jtapiath-cl/ssibd/blob/master/20191023_tm_speech/tm_speech.R).
