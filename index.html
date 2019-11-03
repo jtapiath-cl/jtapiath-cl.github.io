@@ -4,7 +4,7 @@ layout: default
 
 <div class="posts">
   <h1>Latest post</h1>
-  {% for post in site.posts limit:1 %}
+  {% for post in site.posts limit:5 %}
     <article class="post">
 
       <h2><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></h1>
@@ -16,8 +16,5 @@ layout: default
       <a href="{{ site.baseurl }}{{ post.url }}" class="read-more">Read More</a>
     </article>
   {% endfor %}
-  <hr>
-  <h1>A bit about me</h1>
-  <p>[EN] I'm a big data engineer, working on the north american financial system. I started this blog to share some of the experience I have solving data issues, and also to share opinions and use cases with big data tools, in fields such as BI, data viz, big data, data engineering, machine learning, data science, prescriptive analytics, operations research and some other cool stuff.</p>
-  <p>[ES] Soy un ingeniero de big data, trabajando en el sistema financiero norteamericano. Empecé este blog para compartir parte de la experiencia que tengo resolviendo problemas de datos, tanto como para compartir opiniones y casos de uso de herramientas de big data, en campos como la inteligencia de negocios, la visualización de datos, ingeniería de datos, aprendizaje de máquina, ciencia de datos, analítica prescriptiva, investigación de operaciones y algunas otras cosas cool.</p>
+
 </div>
