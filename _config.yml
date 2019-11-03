@@ -91,3 +91,4 @@ excerpt_separator: <!--more-->  # you can specify your own separator, of course.
 # Plugins?
 plugins:
   - jekyll-gist
+theme: jekyll-theme-tactile
